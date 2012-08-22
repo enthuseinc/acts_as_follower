@@ -4,7 +4,7 @@ class ActsAsFollowerTest < ActiveSupport::TestCase
 
   context "instance methods" do
     setup do
-      @sam = Factory(:sam)
+      @sam = FactoryGirl.create(:sam)
     end
 
     should "be defined" do
@@ -19,9 +19,9 @@ class ActsAsFollowerTest < ActiveSupport::TestCase
 
   context "acts_as_follower" do
     setup do
-      @sam = Factory(:sam)
-      @jon = Factory(:jon)
-      @oasis = Factory(:oasis)
+      @sam = FactoryGirl.create(:sam)
+      @jon = FactoryGirl.create(:jon)
+      @oasis = FactoryGirl.create(:oasis)
       @sam.follow(@jon)
       @sam.follow(@oasis)
     end
@@ -40,11 +40,16 @@ class ActsAsFollowerTest < ActiveSupport::TestCase
 
     context "follow a friend" do
       setup do
+        @original_follow_count = Follow.count
+        @jon_follow_count = @jon.follow_count
         @jon.follow(@sam)
       end
 
-      should_change("Follow count", :by => 1) { Follow.count }
-      should_change("@jon.follow_count", :by => 1) { @jon.follow_count }
+      should "change counts" do
+        assert_equal Follow.count, @original_follow_count + 1
+        @jon.reload
+        assert_equal @jon.follow_count, @jon_follow_count + 1
+      end
 
       should "set the follower" do
         assert_equal @jon, Follow.last.follower
@@ -57,11 +62,16 @@ class ActsAsFollowerTest < ActiveSupport::TestCase
 
     context "follow yourself" do
       setup do
+        @follow_count = Follow.count
+        @jon_follow_count = @jon.follow_count
         @jon.follow(@jon)
       end
 
-      should_not_change("Follow count") { Follow.count }
-      should_not_change("@jon.follow_count") { @jon.follow_count }
+      should "not change counts" do
+        assert_equal Follow.count, @follow_count
+        @jon.reload
+        assert_equal @jon.follow_count, @jon_follow_count
+      end
 
       should "not set the follower" do
         assert_not_equal @jon, Follow.last.follower
@@ -74,11 +84,17 @@ class ActsAsFollowerTest < ActiveSupport::TestCase
 
     context "stop_following" do
       setup do
+        @follow_count = Follow.count
+        @sam_follow_count = @sam.follow_count
         @sam.stop_following(@jon)
       end
 
-      should_change("Follow count", :by => -1) { Follow.count }
-      should_change("@sam.follow_count", :by => -1) { @sam.follow_count }
+      should "change counts" do
+        assert_equal Follow.count, (@follow_count - 1)
+        @sam.reload
+        assert_equal @sam.follow_count, (@sam_follow_count - 1)
+      end
+
     end
 
     context "follows" do
@@ -94,7 +110,7 @@ class ActsAsFollowerTest < ActiveSupport::TestCase
         end
 
         should "accept AR options" do
-          @metallica = Factory(:metallica)
+          @metallica = FactoryGirl.create(:metallica)
           @sam.follow(@metallica)
           assert_equal 1, @sam.follows_by_type('Band', :limit => 1).count
         end
@@ -102,7 +118,7 @@ class ActsAsFollowerTest < ActiveSupport::TestCase
 
       context "following_by_type_count" do
         should "return the count of the requested type" do
-          @metallica = Factory(:metallica)
+          @metallica = FactoryGirl.create(:metallica)
           @sam.follow(@metallica)
           assert_equal 2, @sam.following_by_type_count('Band')
           assert_equal 1, @sam.following_by_type_count('User')
@@ -146,7 +162,7 @@ class ActsAsFollowerTest < ActiveSupport::TestCase
       end
 
       should "accept AR options" do
-        @metallica = Factory(:metallica)
+        @metallica = FactoryGirl.create(:metallica)
         @sam.follow(@metallica)
         assert_equal 1, @sam.following_by_type('Band', :limit => 1).to_a.size
       end
@@ -159,7 +175,7 @@ class ActsAsFollowerTest < ActiveSupport::TestCase
       end
 
       should "call following_by_type_count" do
-        @metallica = Factory(:metallica)
+        @metallica = FactoryGirl.create(:metallica)
         @sam.follow(@metallica)
         assert_equal 2, @sam.following_bands_count
         assert_equal 1, @sam.following_users_count
@@ -175,11 +191,16 @@ class ActsAsFollowerTest < ActiveSupport::TestCase
 
     context "destroying follower" do
       setup do
+        @follow_count = Follow.count
+        @sam_follow_count = @sam.follow_count
         @jon.destroy
       end
 
-      should_change("Follow.count", :by => -1) { Follow.count }
-      should_change("@sam.follow_count", :by => -1) { @sam.follow_count }
+      should "change counts" do
+        assert_equal Follow.count, (@follow_count - 1)
+        @sam.reload
+        assert_equal @sam.follow_count, (@sam_follow_count - 1)
+      end
     end
 
     context "blocked by followable" do
